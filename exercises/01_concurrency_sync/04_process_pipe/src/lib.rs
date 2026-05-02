@@ -31,7 +31,7 @@
 //! Each function includes a `TODO` comment indicating where you need to write code.
 //! Run `cargo test` to check your implementations.
 
-use std::io::{self, Read, Write};
+use std::io::{self, stdin, Read, Write};
 use std::process::{Command, Stdio};
 
 /// Execute the given shell command and return its stdout output.
@@ -48,12 +48,22 @@ use std::process::{Command, Stdio};
 /// 2. Set `.stdout(Stdio::piped())` to capture the child's stdout.
 /// 3. Call `.output()` to execute the child and obtain its `Output`.
 /// 4. Convert the `stdout` field (a `Vec<u8>`) into a `String`.
+
+// TODO: ?
 pub fn run_command(program: &str, args: &[&str]) -> String {
     // TODO: Use Command::new to create process
     // TODO: Set stdout to Stdio::piped()
     // TODO: Execute with .output() and get output
     // TODO: Convert stdout to String and return
-    todo!()
+    let output = Command::new(program)
+        .args(args)
+        .stdout(Stdio::piped())
+        .output()
+        .expect("e")
+        .stdout;
+    let res = String::from_utf8_lossy(&output).to_string();
+    //println!("{}", res);
+    res
 }
 
 /// Write data to child process (cat) stdin via pipe and read its stdout output.
@@ -84,12 +94,47 @@ pub fn run_command(program: &str, args: &[&str]) -> String {
 /// 5. Read the child's stdout (`child.stdout.take().unwrap().read_to_string(...)`).
 /// 6. Wait for the child to exit with `.wait()` (or rely on drop‑wait).
 pub fn pipe_through_cat(input: &str) -> String {
-    // TODO: Create "cat" command, set stdin and stdout to piped
-    // TODO: Spawn process
-    // TODO: Write input to child process stdin
-    // TODO: Drop stdin to close pipe (otherwise cat won't exit)
-    // TODO: Read output from child process stdout
-    todo!()
+    // Create "cat" command, set stdin and stdout to piped
+    // 1. Create a `Command` for `"cat"` with `.stdin(Stdio::piped())` and `.stdout(Stdio::piped())`.
+    let mut child = Command::new("cat")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        // 2. `.spawn()` the command to obtain a `Child` with `stdin` and `stdout` handles.
+        .spawn() //  Spawn process
+        .expect("e");
+
+    // Write input to child process stdin
+    // 3. Write `input` bytes to the child's stdin (`child.stdin.take().unwrap().write_all(...)`).
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(input.as_bytes())
+        .expect("e");
+    // 在这个分号这里实际上childStdin（就是那个 stdin handle） 就已经被释放了 它没有在这个分号之前绑定到任何值
+    // 临时变量会立刻释放 所以不用显式去写drop它的stdin
+
+    // Drop stdin to close pipe (otherwise cat won't exit)
+    // 4. Drop the stdin handle (explicit `drop` or let it go out of scope) to close the pipe.
+
+    // drop(child.stdin);
+
+    // 如果在上面drop了 这个stdin 这个child.stdin (类型为Option<T>) 会被拿走所有权 导致child结构体不完整
+    // 结构体不完整会导致不可以传递它的可变引用 而下文中的child.wait 需要传递一个child结构体的显式引用给它
+
+    let mut res = String::new();
+    child
+        .stdout
+        .take()
+        .unwrap()
+        // 5. Read the child's stdout (`child.stdout.take().unwrap().read_to_string(...)`).
+        .read_to_string(&mut res)
+        .expect("e");
+
+    // 6. Wait for the child to exit with `.wait()` (or rely on drop‑wait).
+    child.wait().expect("e");
+
+    res
 }
 
 /// Get child process exit code.
