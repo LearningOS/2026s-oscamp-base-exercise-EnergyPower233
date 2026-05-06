@@ -31,6 +31,7 @@
 //! Each function includes a `TODO` comment indicating where you need to write code.
 //! Run `cargo test` to check your implementations.
 
+use std::char::ParseCharError;
 use std::io::{self, stdin, Read, Write};
 use std::process::{Command, Stdio};
 
@@ -222,7 +223,43 @@ pub fn pipe_through_grep(pattern: &str, input: &str) -> String {
     // TODO: Drop stdin to close pipe
     // TODO: Read output from child stdout line by line
     // TODO: Collect and return matching lines
-    todo!()
+    let mut child = Command::new("grep")
+        .arg(pattern)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("E");
+
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(input.as_bytes())
+        .expect("e");
+
+    let mut raw_output = String::new();
+    child
+        .stdout
+        .take()
+        .unwrap()
+        .read_to_string(&mut raw_output)
+        .expect("e");
+    // mdzz grep 的输出本身就是带换行符的。
+    //
+
+    // let iterable_raw_res: Vec<&str> = raw_output
+    //     .split_terminator('\n')
+    //     .filter(|s| !s.is_empty())
+    //     .collect();
+
+    // let mut lines = iterable_raw_res.join("\n").to_string();
+    // if !lines.is_empty() {
+    //     lines.push('\n')
+    // }
+
+    let _ = child.wait();
+    raw_output
+    // lines
 }
 
 #[cfg(test)]
