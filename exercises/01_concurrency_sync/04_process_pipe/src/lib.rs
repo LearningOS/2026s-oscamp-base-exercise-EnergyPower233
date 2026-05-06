@@ -155,7 +155,11 @@ pub fn get_exit_code(command: &str) -> i32 {
     // TODO: Use Command::new("sh").args(["-c", command])
     // TODO: Execute and get status
     // TODO: Return exit code
-    todo!()
+    let child = Command::new("sh")
+        .args(["-c", command])
+        .status()
+        .expect("e");
+    child.code().unwrap_or(1)
 }
 
 /// Execute the given shell command and return its stdout output as a `Result`.
@@ -182,7 +186,13 @@ pub fn run_command_with_result(program: &str, args: &[&str]) -> io::Result<Strin
     // TODO: Set stdout to Stdio::piped()
     // TODO: Execute with .output() and handle Result
     // TODO: Convert stdout to String with from_utf8, mapping errors to io::Error
-    todo!()
+    let handle = Command::new(program)
+        .args(args)
+        .stdout(Stdio::piped())
+        .output();
+    let p = handle?;
+
+    String::from_utf8(p.stdout).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
 /// Interact with `grep` via bidirectional pipes, filtering lines that contain a pattern.
